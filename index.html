@@ -1,0 +1,1196 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskFlow - Modern To-Do App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom scrollbar for a modern look */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        /* Glassmorphism effect for the navbar and cards */
+        .glass-effect {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(100, 116, 139, 0.3);
+        }
+        
+        /* Custom Checkbox (Display Only) */
+        .task-checkbox {
+            position: relative;
+            width: 24px;
+            height: 24px;
+            min-width: 24px;
+            border: 2px solid #64748b;
+            border-radius: 6px;
+            transition: all 0.2s ease-in-out;
+        }
+        .task-checkbox.completed {
+             border-color: #10b981;
+        }
+        .task-checkbox.completed::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #10b981;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        /* Task card completed state */
+        .task-card.completed { opacity: 0.6; }
+        .task-card.completed .task-title { text-decoration: line-through; }
+
+        /* Task action menu */
+        .task-menu {
+            display: flex;
+            flex-direction: column;
+        }
+        .menu-item {
+            background: none;
+            border: none;
+            color: #f1f5f9;
+            padding: 8px 12px;
+            text-align: left;
+            width: 100%;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .menu-item:hover {
+            background-color: #334155;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+
+        /* Smart Schedule Styles */
+        .smart-schedule-btn {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .smart-schedule-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .schedule-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
+            z-index: 9998;
+            display: none;
+        }
+
+        .schedule-modal-overlay.active {
+            display: block;
+        }
+
+        .schedule-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1e293b;
+            border-radius: 1rem;
+            padding: 2rem;
+            width: 90%;
+            max-width: 900px;
+            max-height: 85vh;
+            overflow-y: auto;
+            z-index: 9999;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            display: none;
+        }
+
+        .schedule-modal.active {
+            display: block;
+        }
+
+        .schedule-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .schedule-modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #f1f5f9;
+        }
+
+        .schedule-close-btn {
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: #94a3b8;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .schedule-close-btn:hover {
+            background: rgba(148, 163, 184, 0.1);
+            color: #f1f5f9;
+        }
+
+        .schedule-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(30, 41, 59, 0.6);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            text-align: center;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .stat-value {
+            display: block;
+            font-size: 2rem;
+            font-weight: 700;
+            color: #3b82f6;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            display: block;
+            font-size: 0.875rem;
+            color: #94a3b8;
+        }
+
+        .schedule-day-section {
+            margin-bottom: 2rem;
+        }
+
+        .schedule-day-header {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #f1f5f9;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #3b82f6;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .schedule-task-block {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: rgba(30, 41, 59, 0.6);
+            border-left: 4px solid #3b82f6;
+            border-radius: 0.5rem;
+            margin-bottom: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        .schedule-task-block:hover {
+            background: rgba(30, 41, 59, 0.9);
+            transform: translateX(4px);
+        }
+
+        .schedule-task-block.priority-high { border-left-color: #ef4444; }
+        .schedule-task-block.priority-medium { border-left-color: #f59e0b; }
+        .schedule-task-block.priority-low { border-left-color: #6b7280; }
+        .schedule-task-block.at-risk { background: rgba(239, 68, 68, 0.1); }
+
+        .schedule-time {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #94a3b8;
+            min-width: 140px;
+            font-family: monospace;
+        }
+
+        .schedule-task-title {
+            flex: 1;
+            font-size: 1rem;
+            color: #f1f5f9;
+            font-weight: 500;
+        }
+
+        .schedule-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .badge-high { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+        .badge-medium { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
+        .badge-low { background: rgba(107, 114, 128, 0.2); color: #9ca3af; }
+        .badge-risk { background: rgba(239, 68, 68, 0.3); color: #fca5a5; margin-left: 0.5rem; }
+
+        .schedule-warnings { margin-top: 1.5rem; }
+
+        .warning-box {
+            padding: 1rem;
+            border-left: 4px solid #f59e0b;
+            border-radius: 0.5rem;
+            background: rgba(245, 158, 11, 0.1);
+            margin-bottom: 1rem;
+        }
+
+        .warning-title { color: #fbbf24; font-weight: 600; margin-bottom: 0.5rem; }
+        .warning-list { margin: 0.5rem 0 0 1.5rem; color: #94a3b8; font-size: 0.875rem; }
+
+        .error-box {
+            padding: 1rem;
+            border-left: 4px solid #ef4444;
+            border-radius: 0.5rem;
+            background: rgba(239, 68, 68, 0.1);
+            margin-bottom: 1rem;
+        }
+
+        .error-title { color: #f87171; font-weight: 600; margin-bottom: 0.5rem; }
+
+        .schedule-modal-footer {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .btn-cancel {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            background: rgba(148, 163, 184, 0.1);
+            color: #94a3b8;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-cancel:hover { background: rgba(148, 163, 184, 0.2); }
+
+        .btn-apply {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .btn-apply:hover { background: #2563eb; }
+
+        .empty-schedule { text-align: center; padding: 3rem 1rem; color: #94a3b8; }
+
+        .scheduled-badge {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            padding: 4px 8px;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+
+        .at-risk-badge {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            padding: 4px 8px;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+    </style>
+<link rel="stylesheet" href="/index.css">
+</head>
+
+<body class="bg-slate-900 text-slate-100 font-sans antialiased">
+    <!-- Top Navigation Bar -->
+    <nav class="sticky top-0 z-40 w-full py-3 glass-effect">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-600 w-8 h-8 rounded-lg flex items-center justify-center font-bold text-lg">TF</div>
+                <span class="text-xl font-bold">TaskFlow</span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button class="smart-schedule-btn" onclick="taskApp.openSmartScheduleModal()">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i>
+                    <span>Smart Schedule</span>
+                </button>
+                <button id="addTaskBtnNav" class="flex items-center space-x-2 px-3 py-2 text-sm font-semibold bg-blue-600 rounded-lg hover:bg-blue-700 transition">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span>Add Task</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Grid -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-10 gap-8">
+        <!-- Left Column: Progress Overview -->
+        <aside class="lg:col-span-3">
+            <div class="p-6 rounded-2xl glass-effect sticky top-24">
+                <h2 class="text-lg font-semibold mb-4">Progress Overview</h2>
+                <p id="progress-summary" class="text-slate-400 mb-6">You've completed 0 of 0 tasks</p>
+                <div class="relative w-48 h-48 mx-auto mb-6">
+                    <svg class="w-full h-full" viewBox="0 0 36 36">
+                        <path class="text-slate-700" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3"></path>
+                        <path id="progress-circle" class="text-blue-500" stroke-width="3" stroke-dasharray="0, 100" stroke-linecap="round" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+                    </svg>
+                    <div id="progress-text" class="absolute inset-0 flex items-center justify-center text-4xl font-bold">0%</div>
+                </div>
+                <div id="weekly-chart-container">
+                     <h3 class="text-md font-semibold mb-4 text-center">Weekly Completion</h3>
+                     <div class="flex items-end justify-between h-32 px-2 text-xs text-slate-400">
+                        <!-- Chart bars will be injected here -->
+                     </div>
+                     <div class="flex justify-between text-xs text-slate-500 mt-1 px-2 border-t border-slate-700 pt-1">
+                        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+                     </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right Column: Task List -->
+        <section class="lg:col-span-7">
+            <!-- Header Row -->
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                <h1 class="text-2xl font-bold">Your Tasks</h1>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <select id="tagFilter" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm w-full sm:w-auto focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+                        <option value="all">All Tags</option>
+                    </select>
+                    <select id="sortOrder" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm w-full sm:w-auto focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                        <option value="priority">Priority</option>
+                        <option value="due-date">Due Date</option>
+                    </select>
+                    <div class="relative w-full sm:w-auto">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"></i>
+                        <input id="searchInput" type="text" placeholder="Search..." class="bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-sm w-full focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Tasks Section -->
+            <div class="active-tasks-section mb-8">
+                <div id="active-tasks-list">
+                    <!-- Active task cards here -->
+                </div>
+            </div>
+
+            <!-- Completed Tasks Section -->
+            <div class="completed-tasks-section" id="completed-section">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">
+                        Completed (<span id="completed-count">0</span>)
+                    </h2>
+                    <button id="clearAllCompletedBtn" class="text-sm text-slate-400 hover:text-red-400 transition">
+                        Clear All
+                    </button>
+                </div>
+                <div id="completed-tasks-list">
+                    <!-- Completed task cards here -->
+                </div>
+            </div>
+
+            <div id="emptyState" class="hidden text-center py-16">
+                <i data-lucide="folder-search" class="w-16 h-16 mx-auto text-slate-600 mb-4"></i>
+                <h3 class="text-xl font-semibold">No tasks found</h3>
+                <p class="text-slate-500 mt-2">Try adjusting your filters or add a new task!</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Add/Edit Task Modal -->
+    <div id="taskModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 hidden" role="dialog" aria-modal="true">
+        <div id="modalContent" class="bg-slate-800 rounded-2xl w-full max-w-lg p-6 border border-slate-700">
+            <h2 id="modalTitle" class="text-xl font-bold mb-6">Add New Task</h2>
+            <form id="taskForm">
+                <input type="hidden" id="taskId">
+                <div class="mb-4">
+                    <label for="taskTitle" class="block text-sm font-medium text-slate-400 mb-1">Title</label>
+                    <input type="text" id="taskTitle" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div class="mb-4">
+                    <label for="taskDescription" class="block text-sm font-medium text-slate-400 mb-1">Description</label>
+                    <textarea id="taskDescription" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="taskPriority" class="block text-sm font-medium text-slate-400 mb-1">Priority</label>
+                        <select id="taskPriority" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="Low">Low</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="taskDueDate" class="block text-sm font-medium text-slate-400 mb-1">Due Date</label>
+                        <input type="date" id="taskDueDate" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label for="taskEstimate" class="block text-sm font-medium text-slate-400 mb-1">Estimated Time (minutes)</label>
+                    <input type="number" id="taskEstimate" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none" min="15" max="480" step="15" placeholder="e.g., 30">
+                </div>
+                <div class="mb-6">
+                    <label for="taskTags" class="block text-sm font-medium text-slate-400 mb-1">Tags (comma-separated)</label>
+                    <input type="text" id="taskTags" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" id="cancelModalBtn" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 transition">Cancel</button>
+                    <button type="submit" id="saveTaskBtn" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 font-semibold transition">Save Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 hidden" role="dialog" aria-modal="true">
+        <div class="bg-slate-800 rounded-2xl w-full max-w-sm p-6 border border-slate-700 text-center">
+            <h2 class="text-lg font-bold mb-2">Are you sure?</h2>
+            <p id="confirmMessage" class="text-slate-400 mb-6">This action cannot be undone.</p>
+            <div class="flex justify-center space-x-3">
+                <button id="cancelConfirmBtn" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 transition w-24">Cancel</button>
+                <button id="confirmDeleteBtn" class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 font-semibold transition w-24">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Smart Schedule Modal -->
+    <div class="schedule-modal-overlay" id="scheduleOverlay" onclick="taskApp.closeSmartScheduleModal()"></div>
+    <div class="schedule-modal" id="scheduleModal">
+      <div class="schedule-modal-header">
+        <h2 class="schedule-modal-title">✨ Smart Schedule Plan</h2>
+        <button class="schedule-close-btn" onclick="taskApp.closeSmartScheduleModal()">&times;</button>
+      </div>
+      <div class="schedule-stats" id="scheduleStats"></div>
+      <div id="scheduleTimeline"></div>
+      <div class="schedule-warnings" id="scheduleWarnings"></div>
+      <div class="schedule-modal-footer">
+        <button class="btn-cancel" onclick="taskApp.closeSmartScheduleModal()">Cancel</button>
+        <button class="btn-apply" onclick="taskApp.applySmartSchedule()">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          <span>Apply Schedule</span>
+        </button>
+      </div>
+    </div>
+
+    <script>
+    // App namespace to avoid polluting global scope
+    const taskApp = {};
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // =================================================================
+        // STATE & CONSTANTS
+        // =================================================================
+        let tasks = [];
+        let filters = {
+            tag: 'all',
+            search: ''
+        };
+        let sortOrder = 'newest';
+        let taskToDeleteId = null;
+        let currentSchedulePlan = null;
+
+        const TASKS_KEY = 'taskflow_tasks';
+        const PREFS_KEY = 'taskflow_preferences';
+
+        const SEED_DATA = [
+            { id: "1", title: "Design new landing page", description: "Create wireframes and mockups for the homepage redesign", priority: "High", dueDate: "2024-12-24", tags: ["Design", "Work"], completed: false, createdAt: "2024-12-20T09:00:00.000Z", estimatedMinutes: 120 },
+            { id: "2", title: "Review pull requests", description: "", priority: "Medium", dueDate: "2024-12-23", tags: ["Code", "Work"], completed: true, createdAt: "2024-12-19T14:30:00.000Z", estimatedMinutes: 60 },
+            { id: "3", title: "Buy groceries", description: "Milk, eggs, bread, coffee", priority: "Low", dueDate: "2024-12-22", tags: ["Personal"], completed: false, createdAt: "2024-12-21T08:15:00.000Z", estimatedMinutes: 30 },
+            { id: "4", title: "Prepare presentation", description: "Quarterly review slides for stakeholders", priority: "High", dueDate: "2024-12-26", tags: ["Work", "Important"], completed: false, createdAt: "2024-12-18T16:45:00.000Z", estimatedMinutes: 180 },
+            { id: "5", title: "Call dentist", description: "Schedule annual checkup", priority: "Medium", dueDate: null, tags: ["Personal", "Health"], completed: false, createdAt: "2024-12-20T11:20:00.000Z", estimatedMinutes: 15 }
+        ];
+
+        const priorityColors = {
+            'Low': 'bg-slate-600 text-slate-200',
+            'Medium': 'bg-amber-500 text-amber-900',
+            'High': 'bg-red-500 text-red-900',
+        };
+
+        // =================================================================
+        // DOM ELEMENTS
+        // =================================================================
+        const DOMElements = {
+            activeTasksList: document.getElementById('active-tasks-list'),
+            completedTasksList: document.getElementById('completed-tasks-list'),
+            completedSection: document.getElementById('completed-section'),
+            completedCount: document.getElementById('completed-count'),
+            clearAllCompletedBtn: document.getElementById('clearAllCompletedBtn'),
+            addTaskBtnNav: document.getElementById('addTaskBtnNav'),
+            taskModal: document.getElementById('taskModal'),
+            modalContent: document.getElementById('modalContent'),
+            cancelModalBtn: document.getElementById('cancelModalBtn'),
+            taskForm: document.getElementById('taskForm'),
+            modalTitle: document.getElementById('modalTitle'),
+            taskId: document.getElementById('taskId'),
+            taskTitle: document.getElementById('taskTitle'),
+            taskDescription: document.getElementById('taskDescription'),
+            taskPriority: document.getElementById('taskPriority'),
+            taskDueDate: document.getElementById('taskDueDate'),
+            taskTags: document.getElementById('taskTags'),
+            taskEstimate: document.getElementById('taskEstimate'),
+            confirmModal: document.getElementById('confirmModal'),
+            confirmMessage: document.getElementById('confirmMessage'),
+            cancelConfirmBtn: document.getElementById('cancelConfirmBtn'),
+            confirmDeleteBtn: document.getElementById('confirmDeleteBtn'),
+            emptyState: document.getElementById('emptyState'),
+            progressSummary: document.getElementById('progress-summary'),
+            progressCircle: document.getElementById('progress-circle'),
+            progressText: document.getElementById('progress-text'),
+            weeklyChartContainer: document.querySelector('#weekly-chart-container .flex.items-end'),
+            tagFilter: document.getElementById('tagFilter'),
+            sortOrder: document.getElementById('sortOrder'),
+            searchInput: document.getElementById('searchInput'),
+            scheduleModal: document.getElementById('scheduleModal'),
+            scheduleOverlay: document.getElementById('scheduleOverlay'),
+            scheduleStats: document.getElementById('scheduleStats'),
+            scheduleTimeline: document.getElementById('scheduleTimeline'),
+            scheduleWarnings: document.getElementById('scheduleWarnings'),
+        };
+
+        // =================================================================
+        // UTILITY FUNCTIONS
+        // =================================================================
+        const generateId = () => Date.now().toString();
+        const formatDate = (dateString) => {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
+        };
+        const debounce = (func, delay) => {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), delay);
+            };
+        };
+
+        // =================================================================
+        // DATA PERSISTENCE
+        // =================================================================
+        const saveData = () => {
+            try {
+                localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+                localStorage.setItem(PREFS_KEY, JSON.stringify({ filters, sortOrder }));
+            } catch (e) {
+                console.error("Error saving data to localStorage", e);
+            }
+        };
+
+        const loadData = () => {
+            try {
+                const storedTasks = localStorage.getItem(TASKS_KEY);
+                const storedPrefs = localStorage.getItem(PREFS_KEY);
+                if (storedTasks) {
+                    tasks = JSON.parse(storedTasks);
+                } else {
+                    tasks = SEED_DATA;
+                }
+                if (storedPrefs) {
+                    const prefs = JSON.parse(storedPrefs);
+                    filters = prefs.filters || filters;
+                    sortOrder = prefs.sortOrder || sortOrder;
+                }
+            } catch (e) {
+                console.error("Error loading data from localStorage", e);
+                tasks = SEED_DATA;
+            }
+        };
+        
+        // =================================================================
+        // RENDERING
+        // =================================================================
+        const render = () => {
+            renderTasks();
+            renderProgressOverview();
+            renderFilters();
+            lucide.createIcons();
+        };
+
+        const applyFiltersAndSort = (tasksArray) => {
+            let result = [...tasksArray];
+            
+            // Filter by tag
+            if (filters.tag !== 'all') {
+                result = result.filter(t => t.tags.includes(filters.tag));
+            }
+
+            // Filter by search
+            const searchLower = filters.search.toLowerCase();
+            if (searchLower) {
+                result = result.filter(t => 
+                    t.title.toLowerCase().includes(searchLower) || 
+                    (t.description && t.description.toLowerCase().includes(searchLower))
+                );
+            }
+
+            // Sort
+            result.sort((a, b) => {
+                switch (sortOrder) {
+                    case 'oldest': return new Date(a.createdAt) - new Date(b.createdAt);
+                    case 'priority':
+                        const pOrder = { 'High': 1, 'Medium': 2, 'Low': 3 };
+                        return (pOrder[a.priority] || 4) - (pOrder[b.priority] || 4);
+                    case 'due-date':
+                        const aDate = a.dueDate ? new Date(a.dueDate) : new Date('9999-12-31');
+                        const bDate = b.dueDate ? new Date(b.dueDate) : new Date('9999-12-31');
+                        return aDate - bDate;
+                    case 'newest':
+                    default: return new Date(b.createdAt) - new Date(a.createdAt);
+                }
+            });
+            return result;
+        };
+        
+        const createTaskCardHTML = (task) => {
+            const isCompleted = task.completed;
+            let scheduleBadge = '';
+            if (task.scheduledStart && !isCompleted) {
+                const start = new Date(task.scheduledStart);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const taskDate = new Date(start);
+                taskDate.setHours(0, 0, 0, 0);
+
+                let dateStr = '';
+                const diffTime = taskDate.getTime() - today.getTime();
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays === 0) {
+                    dateStr = 'Today';
+                } else if (diffDays === 1) {
+                    dateStr = 'Tomorrow';
+                } else {
+                    dateStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                }
+
+                const timeStr = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                scheduleBadge += `<span class="scheduled-badge inline-flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> ${dateStr} at ${timeStr}</span>`;
+            }
+
+            if (task.isAtRisk && !isCompleted) {
+                scheduleBadge += `<span class="at-risk-badge inline-flex items-center gap-1 ml-2"><i data-lucide="alert-triangle" class="w-3 h-3"></i> At Risk</span>`;
+            }
+
+            return `
+                <div class="task-card glass-effect rounded-2xl p-4 mb-4 transition-all duration-200 hover:scale-[1.01] hover:border-blue-500 cursor-pointer ${isCompleted ? 'completed' : ''}" 
+                     onclick="taskApp.showTaskMenu('${task.id}', event)">
+                    <div class="flex items-start">
+                        <div class="task-checkbox ${isCompleted ? 'completed' : ''} mt-1" onclick="event.stopPropagation(); taskApp.toggleComplete('${task.id}');"></div>
+                        <div class="flex-grow mx-4">
+                            <div class="flex justify-between items-center">
+                                <h3 class="task-title font-semibold">${task.title}</h3>
+                                <button class="p-1 rounded-full hover:bg-slate-700" onclick="event.stopPropagation(); taskApp.showTaskMenu('${task.id}', event);">
+                                    <i data-lucide="more-vertical" class="w-4 h-4 text-slate-400"></i>
+                                </button>
+                            </div>
+                            ${task.description ? `<p class="text-sm text-slate-400 mt-1">${task.description}</p>` : ''}
+                            <div class="flex items-center flex-wrap gap-x-3 gap-y-1 text-xs mt-3">
+                                <span class="font-semibold px-2 py-0.5 rounded-full ${priorityColors[task.priority]}">${task.priority}</span>
+                                ${task.dueDate ? `<span class="flex items-center gap-1.5 text-slate-400"><i data-lucide="calendar" class="w-3 h-3"></i>${formatDate(task.dueDate)}</span>` : ''}
+                                ${task.tags.map(tag => `<span class="bg-slate-700 px-2 py-0.5 rounded-full">#${tag}</span>`).join('')}
+                                ${scheduleBadge}
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        };
+        
+        const renderTasks = () => {
+            const activeTasks = tasks.filter(t => !t.completed);
+            const completedTasks = tasks.filter(t => t.completed);
+
+            const filteredAndSortedActive = applyFiltersAndSort(activeTasks);
+
+            DOMElements.activeTasksList.innerHTML = filteredAndSortedActive.map(createTaskCardHTML).join('');
+            DOMElements.completedTasksList.innerHTML = completedTasks.map(createTaskCardHTML).join('');
+
+            DOMElements.completedCount.textContent = completedTasks.length;
+            DOMElements.completedSection.classList.toggle('hidden', completedTasks.length === 0);
+            DOMElements.emptyState.classList.toggle('hidden', filteredAndSortedActive.length > 0 || completedTasks.length > 0);
+        };
+
+        const renderProgressOverview = () => {
+            const total = tasks.length;
+            const completed = tasks.filter(t => t.completed).length;
+            DOMElements.progressSummary.textContent = `You've completed ${completed} of ${total} tasks`;
+
+            const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+            DOMElements.progressCircle.style.strokeDasharray = `${percentage}, 100`;
+            DOMElements.progressText.textContent = `${percentage}%`;
+
+            const weeklyData = [60, 40, 80, 50, 70, 90, 30]; 
+            DOMElements.weeklyChartContainer.innerHTML = weeklyData.map(val => 
+                `<div class="w-full bg-blue-600 rounded-t-sm" style="height:${val}%"></div>`
+            ).join('');
+        };
+
+        const renderFilters = () => {
+            const allTags = [...new Set(tasks.flatMap(t => t.tags))].sort();
+            DOMElements.tagFilter.innerHTML = '<option value="all">All Tags</option>' + allTags.map(tag => `<option value="${tag}">${tag}</option>`).join('');
+            
+            DOMElements.tagFilter.value = filters.tag;
+            DOMElements.sortOrder.value = sortOrder;
+            DOMElements.searchInput.value = filters.search;
+        };
+
+        // =================================================================
+        // TASK ACTIONS (CRUD & MENU)
+        // =================================================================
+        taskApp.showTaskMenu = (taskId, event) => {
+            event.stopPropagation();
+            taskApp.closeMenu();
+            
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            const menu = document.createElement('div');
+            menu.id = 'task-action-menu';
+            menu.className = 'task-menu absolute bg-slate-800 rounded-lg shadow-xl p-2 z-50 border border-slate-700 w-36';
+            
+            const rect = event.currentTarget.getBoundingClientRect();
+            menu.style.top = `${window.scrollY + rect.bottom + 5}px`;
+            menu.style.left = `${rect.right - 144}px`;
+
+            menu.innerHTML = `
+                <button class="menu-item flex items-center gap-2" onclick="taskApp.toggleComplete('${taskId}')">${task.completed ? '<i data-lucide="rotate-ccw" class="w-4 h-4"></i>Uncomplete' : '<i data-lucide="check-circle" class="w-4 h-4"></i>Complete'}</button>
+                <button class="menu-item flex items-center gap-2" onclick="taskApp.openEditModal('${taskId}')"><i data-lucide="pencil" class="w-4 h-4"></i>Edit</button>
+                <button class="menu-item flex items-center gap-2 text-red-400" onclick="taskApp.confirmDelete('${taskId}')"><i data-lucide="trash-2" class="w-4 h-4"></i>Delete</button>
+                <div class="border-t border-slate-700 my-1"></div>
+                <button class="menu-item flex items-center gap-2" onclick="taskApp.closeMenu()"><i data-lucide="x" class="w-4 h-4"></i>Close</button>
+            `;
+            document.body.appendChild(menu);
+            lucide.createIcons();
+            
+            setTimeout(() => document.addEventListener('click', taskApp.closeMenu, { once: true }), 0);
+        };
+
+        taskApp.closeMenu = () => {
+            document.getElementById('task-action-menu')?.remove();
+        };
+
+        taskApp.toggleComplete = (id) => {
+            const task = tasks.find(t => t.id === id);
+            if (task) {
+                task.completed = !task.completed;
+                saveData();
+                render();
+            }
+        };
+        
+        taskApp.confirmDelete = (id) => {
+            openConfirmModal(id);
+        };
+
+        taskApp.openEditModal = (id) => {
+            openModal('edit', id);
+        };
+
+        const handleFormSubmit = (e) => {
+            e.preventDefault();
+            const id = DOMElements.taskId.value;
+            const taskData = {
+                title: DOMElements.taskTitle.value.trim(),
+                description: DOMElements.taskDescription.value.trim(),
+                priority: DOMElements.taskPriority.value,
+                dueDate: DOMElements.taskDueDate.value || null,
+                tags: DOMElements.taskTags.value.split(',').map(t => t.trim()).filter(Boolean),
+                estimatedMinutes: parseInt(DOMElements.taskEstimate.value) || 30
+            };
+            
+            if (!taskData.title) return;
+
+            if (id) {
+                const taskIndex = tasks.findIndex(t => t.id === id);
+                if (taskIndex > -1) {
+                    tasks[taskIndex] = { ...tasks[taskIndex], ...taskData };
+                }
+            } else {
+                const newTask = { ...taskData, id: generateId(), completed: false, createdAt: new Date().toISOString() };
+                tasks.push(newTask);
+            }
+            saveData();
+            render();
+            closeModal();
+        };
+
+        const handleDelete = () => {
+            tasks = tasks.filter(t => t.id !== taskToDeleteId);
+            saveData();
+            render();
+            closeConfirmModal();
+        };
+
+        const clearAllCompleted = () => {
+            openConfirmModal('__CLEAR_ALL__');
+        };
+
+        // =================================================================
+        // MODAL HANDLING
+        // =================================================================
+        const openModal = (mode = 'add', taskId = null) => {
+            DOMElements.taskForm.reset();
+            if (mode === 'edit' && taskId) {
+                const task = tasks.find(t => t.id === taskId);
+                if (task) {
+                    DOMElements.modalTitle.textContent = 'Edit Task';
+                    DOMElements.taskId.value = task.id;
+                    DOMElements.taskTitle.value = task.title;
+                    DOMElements.taskDescription.value = task.description;
+                    DOMElements.taskPriority.value = task.priority;
+                    DOMElements.taskDueDate.value = task.dueDate;
+                    DOMElements.taskTags.value = task.tags.join(', ');
+                    DOMElements.taskEstimate.value = task.estimatedMinutes || '30';
+                }
+            } else {
+                DOMElements.modalTitle.textContent = 'Add New Task';
+                DOMElements.taskId.value = '';
+                DOMElements.taskEstimate.value = '30';
+            }
+            DOMElements.taskModal.classList.remove('hidden');
+        };
+
+        const closeModal = () => {
+            DOMElements.taskModal.classList.add('hidden');
+        };
+
+        const openConfirmModal = (id) => {
+            taskToDeleteId = id;
+            if (id === '__CLEAR_ALL__') {
+                DOMElements.confirmMessage.textContent = `Are you sure you want to delete all completed tasks?`;
+            } else {
+                 const task = tasks.find(t => t.id === id);
+                 if(task) DOMElements.confirmMessage.textContent = `Are you sure you want to delete '${task.title}'?`;
+            }
+            DOMElements.confirmModal.classList.remove('hidden');
+        };
+        
+        const closeConfirmModal = () => {
+            taskToDeleteId = null;
+            DOMElements.confirmModal.classList.add('hidden');
+        };
+
+        // =================================================================
+        // SMART SCHEDULING SYSTEM
+        // =================================================================
+        const DEFAULT_SCHEDULE_PREFS = {
+            workDays: [1, 2, 3, 4, 5], workStart: '09:00', workEnd: '18:00',
+            lunchStart: '12:00', lunchDuration: 60, breakBetweenTasks: 10, maxDailyHours: 6
+        };
+        
+        taskApp.getSchedulePreferences = () => {
+            const saved = localStorage.getItem('taskflow_schedule_preferences');
+            return saved ? JSON.parse(saved) : DEFAULT_SCHEDULE_PREFS;
+        };
+        
+        taskApp.runSmartSchedule = () => {
+            const now = new Date();
+            const preferences = taskApp.getSchedulePreferences();
+            const incompleteTasks = tasks.filter(t => !t.completed);
+
+            if (incompleteTasks.length === 0) return { scheduled: [], unscheduled: [], atRisk: [], totalScheduled: 0, totalUnscheduled: 0 };
+            
+            const sortedTasks = taskApp.sortTasksByPriority(incompleteTasks, now);
+            const timeSlots = taskApp.generateTimeSlots(now, 7, preferences);
+            return taskApp.placeTasksIntoSlots(sortedTasks, timeSlots, preferences);
+        };
+        
+        taskApp.sortTasksByPriority = (taskList, now) => {
+            const priorityScore = { 'High': 3, 'Medium': 2, 'Low': 1 };
+            return [...taskList].sort((a, b) => {
+                const aPriority = priorityScore[a.priority] || 1, bPriority = priorityScore[b.priority] || 1;
+                if (aPriority !== bPriority) return bPriority - aPriority;
+                if (a.dueDate && b.dueDate) return new Date(a.dueDate) - new Date(b.dueDate);
+                if (a.dueDate) return -1;
+                if (b.dueDate) return 1;
+                return new Date(a.createdAt) - new Date(b.createdAt);
+            });
+        };
+
+        taskApp.generateTimeSlots = (startDate, numDays, prefs) => {
+            const slots = [];
+            const now = new Date();
+            for (let dayOffset = 0; dayOffset < numDays; dayOffset++) {
+                const currentDay = new Date(startDate);
+                currentDay.setDate(startDate.getDate() + dayOffset);
+                currentDay.setHours(0, 0, 0, 0);
+                if (!prefs.workDays.includes(currentDay.getDay())) continue;
+                
+                const [startHour, startMin] = prefs.workStart.split(':').map(Number);
+                const [endHour, endMin] = prefs.workEnd.split(':').map(Number);
+                const [lunchHour, lunchMin] = prefs.lunchStart.split(':').map(Number);
+                
+                const morningStart = new Date(currentDay);
+                morningStart.setHours(startHour, startMin, 0, 0);
+                const morningEnd = new Date(currentDay);
+                morningEnd.setHours(lunchHour, lunchMin, 0, 0);
+                if (morningStart > now) slots.push({ start: morningStart, end: morningEnd, day: currentDay.toDateString() });
+                
+                const afternoonStart = new Date(currentDay);
+                afternoonStart.setHours(lunchHour, lunchMin + prefs.lunchDuration, 0, 0);
+                const afternoonEnd = new Date(currentDay);
+                afternoonEnd.setHours(endHour, endMin, 0, 0);
+                if (afternoonStart > now) slots.push({ start: afternoonStart, end: afternoonEnd, day: currentDay.toDateString() });
+            }
+            return slots;
+        };
+
+        taskApp.placeTasksIntoSlots = (sortedTasks, timeSlots, prefs) => {
+            const scheduledTasks = [], unscheduledTasks = [], atRiskTasks = [];
+            let currentSlotIndex = 0, currentTime = null;
+            const dailyMinutes = {};
+            
+            for (const task of sortedTasks) {
+                const duration = task.estimatedMinutes || 30;
+                let taskScheduled = false;
+                for (let i = currentSlotIndex; i < timeSlots.length; i++) {
+                    const slot = timeSlots[i];
+                    const dayKey = slot.day;
+                    const usedMinutes = dailyMinutes[dayKey] || 0;
+                    const maxMinutes = prefs.maxDailyHours * 60;
+                    if (usedMinutes >= maxMinutes) continue;
+                    
+                    if (!currentTime || currentTime < slot.start || currentTime >= slot.end) currentTime = new Date(slot.start);
+                    
+                    const availableMinutes = (slot.end - currentTime) / 60000;
+                    const remainingDailyMinutes = maxMinutes - usedMinutes;
+                    const actualAvailable = Math.min(availableMinutes, remainingDailyMinutes);
+                    
+                    if (actualAvailable >= duration) {
+                        const startTime = new Date(currentTime);
+                        const endTime = new Date(currentTime.getTime() + duration * 60000);
+                        const scheduledTask = { ...task, scheduledStart: startTime.toISOString(), scheduledEnd: endTime.toISOString(), isAtRisk: false };
+                        if (task.dueDate && endTime > new Date(task.dueDate)) {
+                            scheduledTask.isAtRisk = true;
+                            atRiskTasks.push(scheduledTask);
+                        }
+                        scheduledTasks.push(scheduledTask);
+                        dailyMinutes[dayKey] = usedMinutes + duration;
+                        currentTime = new Date(endTime.getTime() + prefs.breakBetweenTasks * 60000);
+                        taskScheduled = true;
+                        break;
+                    } else {
+                        currentSlotIndex = i + 1;
+                        currentTime = null;
+                    }
+                }
+                if (!taskScheduled) unscheduledTasks.push(task);
+            }
+            return { scheduled: scheduledTasks, unscheduled: unscheduledTasks, atRisk: atRiskTasks, totalScheduled: scheduledTasks.length, totalUnscheduled: unscheduledTasks.length };
+        };
+
+        taskApp.openSmartScheduleModal = () => {
+            currentSchedulePlan = taskApp.runSmartSchedule();
+            taskApp.renderScheduleStats(currentSchedulePlan);
+            taskApp.renderScheduleTimeline(currentSchedulePlan);
+            taskApp.renderScheduleWarnings(currentSchedulePlan);
+            DOMElements.scheduleOverlay.classList.add('active');
+            DOMElements.scheduleModal.classList.add('active');
+            lucide.createIcons();
+        };
+
+        taskApp.closeSmartScheduleModal = () => {
+            DOMElements.scheduleOverlay.classList.remove('active');
+            DOMElements.scheduleModal.classList.remove('active');
+            currentSchedulePlan = null;
+        };
+
+        taskApp.renderScheduleStats = (schedule) => {
+            if (!schedule) return; // Prevent crash if schedule is null
+            const totalMinutes = schedule.scheduled.reduce((sum, t) => sum + (t.estimatedMinutes || 30), 0);
+            const totalHours = Math.floor(totalMinutes / 60);
+            const totalMins = totalMinutes % 60;
+            DOMElements.scheduleStats.innerHTML = `
+                <div class="stat-card"><span class="stat-value">${schedule.totalScheduled}</span><span class="stat-label">Tasks Scheduled</span></div>
+                <div class="stat-card"><span class="stat-value">${totalHours}h ${totalMins}m</span><span class="stat-label">Total Time</span></div>
+                <div class="stat-card"><span class="stat-value" style="color: ${schedule.atRisk.length > 0 ? '#ef4444' : '#10b981'}">${schedule.atRisk.length}</span><span class="stat-label">At Risk</span></div>`;
+        };
+
+        taskApp.renderScheduleTimeline = (schedule) => {
+            if (!schedule || schedule.scheduled.length === 0) {
+                DOMElements.scheduleTimeline.innerHTML = `<div class="empty-schedule"><p style="font-size: 1.125rem; margin-bottom: 0.5rem;">📅 No tasks to schedule</p><p style="font-size: 0.875rem;">Add some incomplete tasks to get started.</p></div>`;
+                return;
+            }
+
+            const tasksByDay = {};
+            schedule.scheduled.forEach(task => {
+                const date = new Date(task.scheduledStart);
+                const dayKey = date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+                if (!tasksByDay[dayKey]) {
+                    tasksByDay[dayKey] = [];
+                }
+                tasksByDay[dayKey].push(task);
+            });
+
+            let html = '';
+            Object.keys(tasksByDay).forEach(day => {
+                const tasksOnDay = tasksByDay[day];
+                html += `
+                    <div class="schedule-day-section">
+                        <div class="schedule-day-header">📅 ${day}</div>
+                        ${tasksOnDay.map(task => {
+                            const start = new Date(task.scheduledStart);
+                            const end = new Date(task.scheduledEnd);
+                            const startTime = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                            const endTime = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                            return `
+                                <div class="schedule-task-block priority-${task.priority.toLowerCase()} ${task.isAtRisk ? 'at-risk' : ''}">
+                                    <div class="schedule-time">${startTime} - ${endTime}</div>
+                                    <div class="schedule-task-title">${task.title}</div>
+                                    <span class="schedule-badge badge-${task.priority.toLowerCase()}">${task.priority}</span>
+                                    ${task.isAtRisk ? '<span class="schedule-badge badge-risk">⚠ At Risk</span>' : ''}
+                                </div>`;
+                        }).join('')}
+                    </div>`;
+            });
+            DOMElements.scheduleTimeline.innerHTML = html;
+        };
+        
+        taskApp.renderScheduleWarnings = (schedule) => {
+            if (!schedule) return; // Prevent crash if schedule is null
+            let html = '';
+            if (schedule.unscheduled.length > 0) {
+                html += `
+                    <div class="warning-box">
+                        <div class="warning-title">⚠ ${schedule.unscheduled.length} task(s) could not be scheduled:</div>
+                        <ul class="warning-list">${schedule.unscheduled.map(t => `<li>${t.title}</li>`).join('')}</ul>
+                        <p style="margin: 0.5rem 0 0 0; font-size: 0.875rem; color: #94a3b8;">Try extending work hours or reducing task estimates.</p>
+                    </div>`;
+            }
+            if (schedule.atRisk.length > 0) {
+                html += `
+                    <div class="error-box">
+                        <div class="error-title">⚠ ${schedule.atRisk.length} task(s) may miss their deadlines:</div>
+                        <ul class="warning-list">${schedule.atRisk.map(t => `<li>${t.title} (due ${new Date(t.dueDate).toLocaleDateString()})</li>`).join('')}</ul>
+                    </div>`;
+            }
+            DOMElements.scheduleWarnings.innerHTML = html;
+        };
+
+        taskApp.applySmartSchedule = () => {
+            if (!currentSchedulePlan) return;
+            const totalScheduled = currentSchedulePlan.totalScheduled; // Store value before nullifying
+            tasks.forEach(task => { 
+                task.scheduledStart = null; 
+                task.scheduledEnd = null; 
+                task.isAtRisk = false; 
+            });
+            currentSchedulePlan.scheduled.forEach(scheduledTask => {
+                const task = tasks.find(t => t.id === scheduledTask.id);
+                if (task) { 
+                    task.scheduledStart = scheduledTask.scheduledStart;
+                    task.scheduledEnd = scheduledTask.scheduledEnd;
+                    task.isAtRisk = scheduledTask.isAtRisk;
+                }
+            });
+            saveData();
+            render();
+            taskApp.closeSmartScheduleModal();
+            alert(`✓ Schedule applied! ${totalScheduled} tasks have been scheduled.`);
+        };
+
+
+        // =================================================================
+        // EVENT LISTENERS
+        // =================================================================
+        const attachEventListeners = () => {
+            // Modals
+            DOMElements.addTaskBtnNav.addEventListener('click', () => openModal('add'));
+            DOMElements.cancelModalBtn.addEventListener('click', closeModal);
+            DOMElements.taskModal.addEventListener('click', (e) => {
+                if (e.target === DOMElements.taskModal) closeModal();
+            });
+            DOMElements.taskForm.addEventListener('submit', handleFormSubmit);
+
+            // Confirmation
+            DOMElements.cancelConfirmBtn.addEventListener('click', closeConfirmModal);
+            DOMElements.confirmDeleteBtn.addEventListener('click', handleDelete);
+
+            // Clear All
+            DOMElements.clearAllCompletedBtn.addEventListener('click', clearAllCompleted);
+
+            // Filters & Sort
+            DOMElements.tagFilter.addEventListener('change', (e) => { filters.tag = e.target.value; saveData(); render(); });
+            DOMElements.sortOrder.addEventListener('change', (e) => { sortOrder = e.target.value; saveData(); render(); });
+            DOMElements.searchInput.addEventListener('input', debounce((e) => { filters.search = e.target.value; saveData(); render(); }, 300));
+            
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                const isModalOpen = !DOMElements.taskModal.classList.contains('hidden') || !DOMElements.confirmModal.classList.contains('hidden') || !DOMElements.scheduleModal.classList.contains('hidden');
+                if (e.key.toLowerCase() === 'n' && !isModalOpen && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    openModal('add');
+                }
+                if (e.key === 'Escape') {
+                    taskApp.closeMenu();
+                    closeModal();
+                    closeConfirmModal();
+                    taskApp.closeSmartScheduleModal();
+                }
+            });
+        };
+
+        // =================================================================
+        // INITIALIZATION
+        // =================================================================
+        const init = () => {
+            loadData();
+            attachEventListeners();
+            render();
+        };
+
+        init();
+    });
+    </script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>

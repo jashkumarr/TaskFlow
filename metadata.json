@@ -1,0 +1,5 @@
+{
+  "name": "TaskFlow -To-Do List",
+  "description": "A modern, accessible To-Do List web app built with React and Tailwind CSS. Features include drag-and-drop reordering, comprehensive filtering and sorting, multi-select bulk actions, dark mode, and persistent storage via localStorage.",
+  "requestFramePermissions": []
+}
